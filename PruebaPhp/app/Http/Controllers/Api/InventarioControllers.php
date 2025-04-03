@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\Producto;
 use Illuminate\Support\Facades\Validator;
 use Dotenv\Repository\RepositoryInterface;
+use Symfony\Contracts\Service\Attribute\Required;
 
 class InventarioControllers extends Controller
 {
@@ -30,14 +31,16 @@ class InventarioControllers extends Controller
     //validacion de datos
     public function store(Request $request)
     {
-        dd($request->all());
+
         $validator = Validator::make($request->all(), [
             'documento' => 'required|unique:producto',
-            'nombreproducto' => 'required|max255',
-            'Referencia' => 'required|max255',
-            'precio' => 'required|max255',
-            'stock' => 'required|max255',
-            'fechacreacion' => ''
+            'nombreproducto' => 'required|max:255',
+            'Referencia' => 'required|max:255',
+            'precio' => 'required|max:255',
+            'stock' => 'required|max:255',
+            'fechacreacion' => 'required|date_format:Y-m-d' // Valida el formato correcto
+            // Formatear la fecha
+
         ]);
 
         if ($validator->fails()) {
@@ -48,6 +51,8 @@ class InventarioControllers extends Controller
             ];
             return response()->json($data, 404);
         }
+        // Formatear la fecha manualmente antes de guardarla
+        $fechaFormateada = date('Y-m-d', strtotime($request->fechacreacion));
 
         //creacion
         $producto = Producto::create([
@@ -56,7 +61,7 @@ class InventarioControllers extends Controller
             'Referencia' => $request->Referencia,
             'precio' => $request->precio,
             'stock' => $request->stock,
-            'fechacreacion' => $request->fechacreacion
+            'fechacreacion' => $fechaFormateada
         ]);
         if (!$producto) {
             $data = [
@@ -72,10 +77,47 @@ class InventarioControllers extends Controller
         return response()->json($data, 201);
     }
 
-    //consultar
+    //consultar Productos
 
+    public function show($id)
+    {
+        $producto = Producto::find($id);
+        if (!$producto) {
+            $data = [
+                'message' => 'Producto no encontrado',
+                'status' => '404'
+            ];
+            return response()->json($data, 404);
+        }
+        $data = [
+            'producto' => $producto,
+            'status' => 200
+        ];
+        return response()->json($data, 200);
+    }
 
+    //eliminar producto
 
+    public function destroy($id)
+    {
+        $producto = Producto::find($id);
+        if (!$producto) {
+            $data = [
+                'message' => 'Producto no encontrado',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+
+        $producto->delete();
+        $data = [
+            'message' => 'Producto eliminado',
+            'status' => 200
+        ];
+        return response()->json($data, 200);
+    }
+
+    //actualizar producto
 
 
 }
