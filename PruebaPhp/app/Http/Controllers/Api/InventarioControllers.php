@@ -31,50 +31,49 @@ class InventarioControllers extends Controller
     //validacion de datos
     public function store(Request $request)
     {
-
+        // Validar que se está recibiendo un array de productos
         $validator = Validator::make($request->all(), [
-            'documento' => 'required|unique:producto',
-            'nombreproducto' => 'required|max:255',
-            'Referencia' => 'required|max:255',
-            'precio' => 'required|max:255',
-            'stock' => 'required|max:255',
-            'fechacreacion' => 'required|date_format:Y-m-d' // Valida el formato correcto
-            // Formatear la fecha
-
+            'productos' => 'required|array|min:1',
+            'productos.*.documento' => 'required|integer|unique:producto,documento',
+            'productos.*.nombreproducto' => 'required|string|max:255',
+            'productos.*.Referencia' => 'required|string|max:255',
+            'productos.*.precio' => 'required|numeric',
+            'productos.*.stock' => 'required|integer',
+            'productos.*.fechacreacion' => 'required|date_format:Y-m-d', // Validar formato correcto de fecha
         ]);
 
+        // Si la validación falla
         if ($validator->fails()) {
-            $data = [
-                'message' => 'Error validacion producto stock',
-                'error' => $validator->errors(),
-                'status' => 400,
-            ];
-            return response()->json($data, 404);
+            return response()->json([
+                'message' => 'Error de validación',
+                'errors' => $validator->errors(),
+                'status' => 400
+            ], 400);
         }
-        // Formatear la fecha manualmente antes de guardarla
-        $fechaFormateada = date('Y-m-d', strtotime($request->fechacreacion));
 
-        //creacion
-        $producto = Producto::create([
-            'documento' => $request->documento,
-            'nombreproducto' => $request->nombreproducto,
-            'Referencia' => $request->Referencia,
-            'precio' => $request->precio,
-            'stock' => $request->stock,
-            'fechacreacion' => $fechaFormateada
-        ]);
-        if (!$producto) {
-            $data = [
-                'message' => 'error al crear producto',
-                'status' => 500
-            ];
-            return response()->json($data, 500);
+        $productosGuardados = [];
+
+        // Recorrer y guardar cada producto
+        foreach ($request->productos as $productoData) {
+            $productoData['fechacreacion'] = date('Y-m-d', strtotime($productoData['fechacreacion'])); // Formatear fecha
+
+            $producto = Producto::create($productoData);
+
+            if (!$producto) {
+                return response()->json([
+                    'message' => 'Error al crear un producto',
+                    'status' => 500
+                ], 500);
+            }
+
+            $productosGuardados[] = $producto;
         }
-        $data = [
-            'producto' => $producto,
-            'status' => '201',
-        ];
-        return response()->json($data, 201);
+
+        return response()->json([
+            'message' => 'Productos creados con éxito',
+            'productos' => $productosGuardados,
+            'status' => 201
+        ], 201);
     }
 
     //consultar Productos
@@ -119,5 +118,115 @@ class InventarioControllers extends Controller
 
     //actualizar producto
 
+    public function update(Request $request, $id)
+    {
+        $producto = Producto::find($id);
+        if (!$producto) {
+            $data = [
+                'message' => 'Este producto no se encuentra',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
 
+        $validator = Validator::make($request->all(), [
+            'documento' => 'required|unique:producto,documento,' . $id . ',id',
+            'nombreproducto' => 'required|max:255',
+            'Referencia' => 'required|max:255',
+            'precio' => 'required|max:255',
+            'stock' => 'required|max:255',
+            'fechacreacion' => 'required|date_format:Y-m-d' // Valida el formato correcto
+            // Formatear la fecha
+
+        ]);
+
+        if ($validator->fails()) {
+            $data = [
+                'message' => 'Producto no encontrado',
+                'error' => $validator->errors(),
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+        // Formatear fecha solo si es necesario
+        $fechaFormateada = $request->fechacreacion;
+        if (strtotime($fechaFormateada) === false) {
+            $fechaFormateada = date('Y-m-d', strtotime($request->fechacreacion));
+        }
+        $producto->update([
+            $producto->documento = $request->documento,
+            $producto->nombreproducto = $request->nombreproducto,
+            $producto->Referencia = $request->Referencia,
+            $producto->precio = $request->precio,
+            $producto->stock = $request->stock,
+            $producto->fechacreacion = $fechaFormateada
+
+        ]);
+        $producto->save();
+        $data = [
+            'message' => 'Producto actualizado',
+            'producto' => $producto,
+            'status' => 200
+        ];
+        return response()->json($data, 200);
+    }
+
+    //actualizar usn campo
+    public function updatePath(Request $request, $id)
+    {
+        $producto = Producto::find($id);
+        if (!$producto) {
+            $data = [
+                'message' => 'Producto no se encontro',
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'documento' => 'required|unique:producto,documento,' . $id . ',id',
+            'nombreproducto' => 'required|max:255',
+            'Referencia' => 'required|max:255',
+            'precio' => 'required|max:255',
+            'stock' => 'required|max:255',
+            'fechacreacion' => 'required|date_format:Y-m-d' // Valida el formato correcto
+            // Formatear la fecha
+
+        ]);
+        if ($validator->fails()) {
+            $data = [
+                'message' => 'Error al validar los datos',
+                'errors' => $validator->errors(),
+                'status' => 404
+            ];
+            return response()->json($data, 404);
+        }
+
+        if ($request->has('documento')) {
+            $producto->documento = $request->documento;
+        }
+
+        if ($request->has('nombreproducto')) {
+            $producto->nombreproducto = $request->nombreproducto;
+        }
+        if ($request->has('Referencia')) {
+            $producto->Referencia = $request->Referencia;
+        }
+        if ($request->has('precio')) {
+            $producto->precio = $request->precio;
+        }
+        if ($request->has('stock')) {
+            $producto->stock = $request->stock;
+        }
+        if ($request->has('fechacreacion')) {
+            $producto->fechacreacion = $request->fechacreacion;
+        }
+        $producto->save();
+        $data = [
+            'message' => 'producto actualizado',
+            'producto' => $producto,
+            'status' => 200
+        ];
+        return response()->json($data, 200);
+    }
 }

@@ -10,13 +10,15 @@ use Illuminate\Support\Facades\Route;
 Route::get('/producto', [InventarioControllers::class, 'index']);
 
 //mostrar productos id
-Route::get('/producto/{id}');
+Route::get('/producto/{id}', [InventarioControllers::class, 'show']);
 
 //crear un producto
 Route::post('/producto', [InventarioControllers::class, 'store']);
 
 //actualizar producto
-Route::put('/producto');
+Route::put('/producto/{id}', [InventarioControllers::class, 'update']);
+//actualizar producto
+Route::patch('/producto/{id}', [InventarioControllers::class, 'updatePath']);
 
 //eliminar producto
-Route::delete('/producto');
+Route::delete('/producto/{id}', [InventarioControllers::class, 'destroy']);
